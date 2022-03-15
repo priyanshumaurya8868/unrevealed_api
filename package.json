@@ -1,0 +1,17 @@
+{
+  "name": "urevealed_api",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "nodemon server.js"
+  },
+  "author": "Priyanshu Morya",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.17.3",
+    "http": "0.0.1-security",
+    "morgan": "^1.10.0"
+  }
+}
