@@ -1,11 +1,16 @@
 const express = require("express");
 const req = require("express/lib/request");
 const res = require("express/lib/response");
+const mongoose  = require("mongoose");
 const morgan = require("morgan");
 const ApiError = require("./error/ApiError");
 const app = express("morgan");
 const apiErroHandler = require('./error/ErrorHandler');
-const secretsResource = require('./routers/Secrets')
+const secretsRoute = require('./routes/Secrets')
+const authRoute = require("./routes/auth")
+const avatarsRoute = require("./routes/avatars")
+
+mongoose.connect("mongodb://localhost:27017/unrevealed?readPreference=primary&appname=MongoDB%20Compass&directConnection=true&ssl=false")
 
 app.use(morgan("dev")); //logging
 app.use(express.urlencoded({ extended: true })); //for encoding params
@@ -32,11 +37,14 @@ if(req.method == "OPTIONS"){
 }
 next();
 });
+app.use(express.static('images'))
+app.use("/avatars",avatarsRoute)
+app.use("/secrets",secretsRoute)
+app.use("/auth",authRoute)
 
-app.use("/secrets",secretsResource)
 
 app.use((req,res,next)=>{
-    next(ApiError.badRequest('msg field is required and must be non blank'));
+    next(ApiError.badRequest('Something went wrong!'));
 });
 
 app.use(apiErroHandler);

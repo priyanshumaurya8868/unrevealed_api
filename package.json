@@ -10,8 +10,11 @@
   "author": "Priyanshu Morya",
   "license": "ISC",
   "dependencies": {
+    "bcrypt": "^5.0.1",
     "express": "^4.17.3",
     "http": "0.0.1-security",
+    "jsonwebtoken": "^8.5.1",
+    "mongoose": "^6.2.6",
     "morgan": "^1.10.0"
   }
 }
