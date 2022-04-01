@@ -3,7 +3,7 @@ const Secret = require("../models/secret");
 const commentSchema = mongoose.Schema({
     _id : mongoose.Schema.Types.ObjectId,
     content : {type:String, required:true},
-    secret_id: {type:mongoose.Schema.Types.ObjectId,ref: 'User',require : true},
+    secret_id: {type:mongoose.Schema.Types.ObjectId,ref: 'Secret',require : true},
     commenter:{type : mongoose.Schema.Types.ObjectId, ref:'User',required:true},
     timestamp: {type:String, default: new Date().toISOString()},
     liked_by : [{type:mongoose.Schema.Types.ObjectId,ref:'User'}],

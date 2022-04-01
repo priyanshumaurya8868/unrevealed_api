@@ -3,6 +3,7 @@ const mongoose = require("mongoose");
 const ApiError = require("../error/ApiError");
 const Secret = require("../models/secret");
 const Comment = require("../models/comments");
+const User = require("../models/user");
 const { findOne, findOneAndDelete } = require("../models/secret");
 // const check_auth = require("../middleware/check-auth");
 
@@ -123,16 +124,16 @@ exports.get_secret_by_id = (req, res, next) => {
     .catch((err) => next(err));
 };
 
-exports.delete_secret_by_id = async(req, res, next) => {
+exports.delete_secret_by_id = async (req, res, next) => {
   const secret_id = req.params.secret_id;
   const logged_user_id = req.user_data._id;
- await Secret.findById(secret_id)
+  await Secret.findById(secret_id)
     .then(async (result) => {
       if (result) {
-        console.log(`Log user : ${logged_user_id}`)
-        console.log(`actual author : ${result.author}`)
+        console.log(`Log user : ${logged_user_id}`);
+        console.log(`actual author : ${result.author}`);
         if (result.author == logged_user_id) {
-          await Secret.deleteOne( {_id : secret_id} )
+          await Secret.deleteOne({ _id: secret_id })
             .exec()
             .then((result) => {
               res.status(200).json({
@@ -155,14 +156,16 @@ exports.delete_secret_by_id = async(req, res, next) => {
 };
 
 //->validate->save->findSecret->indexed
-exports.post_comment = (req, res, next) => {
+exports.post_comment = async (req, res, next) => {
   const str = req.body.comment;
   const secret_id = req.body.secret_id;
   const logged_user_id = req.user_data._id;
 
+//...validate
   if (!str || str.trim().length === 0) {
     next(ApiError.unprocessableEntity("Comment can't be blank!"));
   }
+//...save
   Comment({
     _id: mongoose.Types.ObjectId(),
     content: str,
@@ -170,45 +173,36 @@ exports.post_comment = (req, res, next) => {
     commenter: logged_user_id,
   })
     .save()
-    .then((cmt) => {
-      Secret.findOneAndUpdate(
-        secret_id,
+    .then(async (cmt) => {
+//...indexed
+      await Secret.updateOne(
+        { _id: secret_id },
         {
           $push: { comments: cmt._id },
           $inc: { comments_count: 1 },
-        },
-        { new: true }
-      )
-        .populate(["author", "comments"])
-        .populate({
-          path: "comments",
-          populate: {
-            path: "commenter",
-            model: "User",
-            select: "username avatar",
-          },
-        })
-        .exec()
-        .then((result) => {
-          if (result) {
-            res.status(201).json(detailedSecret(result));
-          } else {
-            next(ApiError.resourceNotFound("No secret exists!"));
-          }
-        })
-        .catch((err) => next(err));
+        }
+      );
+//...returned
+      Comment.findOne({_id: cmt._id})
+      .populate("commenter",["username", "avatar"])
+      .exec()
+      .then((result)=>{
+        res.status(201).json({result})
+      })
+      .catch((err)=>next(err))
+
     })
     .catch((err) => next(err));
 };
 
-exports.delete_comment_by_id = async function(req, res, next) {
+exports.delete_comment_by_id = async function (req, res, next) {
   try {
     const comment_id = req.params.comment_id;
 
     Comment.findOneAndDelete({ _id: comment_id })
       .exec()
       .then(async (result) => {
-       await  Secret.findOneAndUpdate(
+        await Secret.findOneAndUpdate(
           { _id: result.secret_id },
           { $pull: { comments: result._id } }
         )
@@ -230,9 +224,10 @@ exports.like_comment = (req, res, next) => {
   const logged_user_id = req.user_data._id;
   Comment.findOneAndUpdate(
     { _id: comment_id },
-    { $addToSet: { liked_by: logged_user_id } }
+    { $addToSet: { liked_by: logged_user_id } },
+    {new: true}
   )
-    .populate("commenter", ["avatar", "username", "_id"])
+    .populate("commenter", ["avatar", "username"])
     .exec()
     .then((result) => {
       if (result) {
@@ -247,9 +242,10 @@ exports.dislike_comment = (req, res, next) => {
   const logged_user_id = req.user_data._id;
   Comment.findOneAndUpdate(
     { _id: comment_id },
-    { $pull: { liked_by: logged_user_id } }
+    { $pull: { liked_by: logged_user_id } },
+    {new : true}
   )
-    .populate("commenter", "avatar", "username", "_id")
+    .populate("commenter", ["avatar", "username",] )
     .exec()
     .then((result) => {
       if (result) {
@@ -288,3 +284,4 @@ function detailedSecret(secret) {
     comments: secret.comments,
   };
 }
+
