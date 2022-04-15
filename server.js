@@ -4,6 +4,6 @@ const app = require('./app')
 
 const server = http.createServer(app)
 
-server.listen(port,()=>{
+server.listen(2022,()=>{
     console.log(`listening portNo. ${port}`)
 })

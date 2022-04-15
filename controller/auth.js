@@ -98,34 +98,21 @@ exports.login = (req, res, next) => {
                 )
               );
           }
-          if (error) {
+            if(error)
             console.log(error);
             next(
               ApiError.unauthorizedResponse(
-                error.message ?? "Incorrect username or password"
+                "Incorrect username or password"
               )
             );
-          }
+          
         });
       }
     })
     .catch((error) => next(error));
 };
 
-exports.get_user_by_id = (req, res, next) => {
-  const user_id = req.params.user_id;
-  User.findById(user_id).select(["username", "_id","gender","secrets","avatar"])
-    .exec()
-    .then(
-      (result) => {
-      if (result) 
-      res.status(200).json(result);
-      else 
-      next(ApiError.resourceNotFound("User not found!"));
-    }
-    )
-    .catch((err) => next(err));
-}
+
 
 function getAuthResponse(username, password, user_id, avatar, gender) {
   const token = jwt.sign(

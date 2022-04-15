@@ -1,11 +1,10 @@
 const  mongoose  = require("mongoose");
-const Secret = require("../models/secret");
 const commentSchema = mongoose.Schema({
     _id : mongoose.Schema.Types.ObjectId,
     content : {type:String, required:true},
     secret_id: {type:mongoose.Schema.Types.ObjectId,ref: 'Secret',require : true},
     commenter:{type : mongoose.Schema.Types.ObjectId, ref:'User',required:true},
-    timestamp: {type:String, default: new Date().toISOString()},
+    timestamp: {type:String, default: getTime()},
     liked_by : [{type:mongoose.Schema.Types.ObjectId,ref:'User'}],
 });
 
@@ -13,6 +12,12 @@ const commentSchema = mongoose.Schema({
 const Comment = mongoose.model('Comment',commentSchema)
 
 module.exports = Comment
+
+function getTime(){
+    var tzoffset = (new Date()).getTimezoneOffset() * 60000; //offset in milliseconds
+    var localISOTime = (new Date(Date.now() - tzoffset)).toISOString()
+    return localISOTime
+    }
 
 
 // The "multi" makes sure that the "comnt" would be removed for all User objects that reference it, thought it probably really is only one document anyway.
@@ -24,3 +29,5 @@ module.exports = Comment
 
 
 // hooks- del used ref : https://stackoverflow.com/questions/68987607/remove-referenced-documents-with-mongoose-mongodb-middleware-in-2021
+
+

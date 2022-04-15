@@ -9,6 +9,7 @@ const apiErroHandler = require('./error/ErrorHandler');
 const secretsRoute = require('./routes/Secrets')
 const authRoute = require("./routes/auth")
 const avatarsRoute = require("./routes/avatars")
+const usersRoute = require("./routes/users")
 
 mongoose.connect("mongodb://localhost:27017/unrevealed?readPreference=primary&appname=MongoDB%20Compass&directConnection=true&ssl=false")
 
@@ -41,6 +42,7 @@ app.use(express.static('images'))
 app.use("/avatars",avatarsRoute)
 app.use("/secrets",secretsRoute)
 app.use("/auth",authRoute)
+app.use("/users",usersRoute)
 
 
 app.use((req,res,next)=>{

@@ -4,14 +4,13 @@ const ApiError = require("../error/ApiError");
 const Secret = require("../models/secret");
 const Comment = require("../models/comments");
 const User = require("../models/user");
-const { findOne, findOneAndDelete } = require("../models/secret");
 // const check_auth = require("../middleware/check-auth");
 
 {
   // "content": "this is my secret, that now i'm going to reaveal annoymounsly"
 }
 
-exports.reveale_secret = (req, res, next) => {
+exports.reveal_secret = (req, res, next) => {
   console.log(`Entered json Body ${req.body}`);
   const secret = new Secret({
     _id: new mongoose.Types.ObjectId(),
@@ -21,8 +20,14 @@ exports.reveale_secret = (req, res, next) => {
   secret
     .save()
     .then((result) => {
-      console.log(result);
-      res.status(201).json(feedsSecret(secret));
+      console.log("SAVED SECRET : " + result);
+
+      Secret.findOne({"_id": result._id}).populate("author")
+      .exec()
+      .then((result)=>{
+        res.status(201).json(feedsSecret(result))
+      })
+      .catch((err)=>next(err))
     })
     .catch((error) => {
       console.log(error);
@@ -30,11 +35,11 @@ exports.reveale_secret = (req, res, next) => {
     });
 };
 
-exports.get_secrets = (req, res, next) => {
+exports.get_secrets = async (req, res, next) => {
   const limit = req.query.limit || 20;
   const skip = req.query.skip || 0;
-
-  Secret.find()
+  const  total_count = await Secret.countDocuments({});
+   Secret.find()
     .skip(skip)
     .limit(limit)
     .populate(["author"])
@@ -44,7 +49,10 @@ exports.get_secrets = (req, res, next) => {
       console.log(secrets);
       res.status(200).json({
         status: "Success",
-        count: secrets.length,
+        total_count : total_count,
+        skip:skip,
+        limit:limit,
+        present_count: secrets.length,
         secrets: secrets.map((secret) => feedsSecret(secret)),
       });
     })
@@ -266,7 +274,7 @@ function feedsSecret(secret) {
     content: secret.content,
     timestamp: secret.timestamp,
     views_count: secret.views_count,
-    Comments_count: secret.comments.length,
+    comments_count: secret.comments.length,
   };
 }
 
@@ -274,6 +282,7 @@ function detailedSecret(secret) {
   return {
     _id: secret._id,
     author: {
+      _id : secret.author._id,
       username: secret.author.username,
       avatar: secret.author.avatar,
     },

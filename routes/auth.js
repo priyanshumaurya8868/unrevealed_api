@@ -11,7 +11,7 @@ router.post("/signup",authController.signup  );
 
 router.post("/login",authController.login);
 
-router.get("/users/:user_id", check_auth, authController.get_user_by_id);
+
 
 module.exports = router;
 
