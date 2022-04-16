@@ -6,9 +6,9 @@ const Comment = require("../models/comments");
 const User = require("../models/user");
 // const check_auth = require("../middleware/check-auth");
 
-{
-  // "content": "this is my secret, that now i'm going to reaveal annoymounsly"
-}
+// {
+// "content": "this is my secret, that now i'm going to reaveal annoymounsly"
+// }
 
 exports.reveal_secret = (req, res, next) => {
   console.log(`Entered json Body ${req.body}`);
@@ -22,12 +22,13 @@ exports.reveal_secret = (req, res, next) => {
     .then((result) => {
       console.log("SAVED SECRET : " + result);
 
-      Secret.findOne({"_id": result._id}).populate("author")
-      .exec()
-      .then((result)=>{
-        res.status(201).json(feedsSecret(result))
-      })
-      .catch((err)=>next(err))
+      Secret.findOne({ _id: result._id })
+        .populate("author")
+        .exec()
+        .then(async (result) => {
+          res.status(201).json( await feedsSecret(result));
+        })
+        .catch((err) => next(err));
     })
     .catch((error) => {
       console.log(error);
@@ -38,22 +39,24 @@ exports.reveal_secret = (req, res, next) => {
 exports.get_secrets = async (req, res, next) => {
   const limit = req.query.limit || 20;
   const skip = req.query.skip || 0;
-  const  total_count = await Secret.countDocuments({});
-   Secret.find()
+  const total_count = await Secret.countDocuments({});
+  Secret.find()
     .skip(skip)
     .limit(limit)
     .populate(["author"])
     .sort("-timestamp")
     .exec()
-    .then((secrets) => {
+    .then( async (secrets) => {
+
       console.log(secrets);
       res.status(200).json({
         status: "Success",
-        total_count : total_count,
-        skip:skip,
-        limit:limit,
+        total_count: total_count,
+        skip: skip,
+        limit: limit,
         present_count: secrets.length,
-        secrets: secrets.map((secret) => feedsSecret(secret)),
+        secrets:  await Promise.all( secrets.map(feedsSecret))
+        // secrets.map(async(secret)=>await feedsSecret(secret))
       });
     })
     .catch((error) => next(error));
@@ -70,16 +73,16 @@ exports.get_my_secrets = (req, res, next) => {
     .populate(["author"])
     .sort("-timestamp")
     .exec()
-    .then((secrets) => {
+    .then(async(secrets) => {
       console.log(secrets);
       res.status(200).json({
         status: "Success",
         count: secrets.length,
-        secrets: secrets.map((secret) => feedsSecret(secret)),
-      });
+        secrets:  await Promise.all( secrets.map(feedsSecret))
     })
     .catch((error) => next(error));
-};
+}
+    )}
 
 exports.update_secret = (req, res, next) => {
   const secret_id = req.body.secret_id;
@@ -91,18 +94,10 @@ exports.update_secret = (req, res, next) => {
     },
     { new: true }
   )
-    .populate(["author", "comments"])
-    .populate({
-      path: "comments",
-      populate: {
-        path: "commenter",
-        model: "User",
-        select: "username avatar",
-      },
-    })
+    .populate(["author"])
     .exec()
-    .then((result) => {
-      res.json(feedsSecret(result));
+    .then(async (result) => {
+      res.json(await feedsSecret(result));
     })
     .catch((err) => next(err));
 };
@@ -115,18 +110,10 @@ exports.get_secret_by_id = (req, res, next) => {
     { $inc: { views_count: 1 } },
     { new: true }
   )
-    .populate(["author", "comments"])
-    .populate({
-      path: "comments",
-      populate: {
-        path: "commenter",
-        model: "User",
-        select: "username avatar",
-      },
-    })
+    .populate(["author"])
     .exec()
-    .then((result) => {
-      if (result) res.status(200).json(detailedSecret(result, logged_user_id));
+    .then(async (result) => {
+      if (result) res.status(200).json(await detailedSecret(result, logged_user_id));
       else next(ApiError.resourceNotFound("No such secret exists!"));
     })
     .catch((err) => next(err));
@@ -163,107 +150,7 @@ exports.delete_secret_by_id = async (req, res, next) => {
     .catch((err) => next(err));
 };
 
-//->validate->save->findSecret->indexed
-exports.post_comment = async (req, res, next) => {
-  const str = req.body.comment;
-  const secret_id = req.body.secret_id;
-  const logged_user_id = req.user_data._id;
-
-//...validate
-  if (!str || str.trim().length === 0) {
-    next(ApiError.unprocessableEntity("Comment can't be blank!"));
-  }
-//...save
-  Comment({
-    _id: mongoose.Types.ObjectId(),
-    content: str,
-    secret_id: secret_id,
-    commenter: logged_user_id,
-  })
-    .save()
-    .then(async (cmt) => {
-//...indexed
-      await Secret.updateOne(
-        { _id: secret_id },
-        {
-          $push: { comments: cmt._id },
-          $inc: { comments_count: 1 },
-        }
-      );
-//...returned
-      Comment.findOne({_id: cmt._id})
-      .populate("commenter",["username", "avatar"])
-      .exec()
-      .then((result)=>{
-        res.status(201).json({result})
-      })
-      .catch((err)=>next(err))
-
-    })
-    .catch((err) => next(err));
-};
-
-exports.delete_comment_by_id = async function (req, res, next) {
-  try {
-    const comment_id = req.params.comment_id;
-
-    Comment.findOneAndDelete({ _id: comment_id })
-      .exec()
-      .then(async (result) => {
-        await Secret.findOneAndUpdate(
-          { _id: result.secret_id },
-          { $pull: { comments: result._id } }
-        )
-          .exec()
-          .then((result) => {
-            res
-              .status(200)
-              .json({ status: "Success", message: "Comment deleted!" });
-          });
-      })
-      .catch((err) => {});
-  } catch (err) {
-    next(err);
-  }
-};
-
-exports.like_comment = (req, res, next) => {
-  const comment_id = req.params.comment_id;
-  const logged_user_id = req.user_data._id;
-  Comment.findOneAndUpdate(
-    { _id: comment_id },
-    { $addToSet: { liked_by: logged_user_id } },
-    {new: true}
-  )
-    .populate("commenter", ["avatar", "username"])
-    .exec()
-    .then((result) => {
-      if (result) {
-        res.status(201).json(result);
-      } else next(ApiError.resourceNotFound("Comment not Found!"));
-    })
-    .catch((err) => next(err));
-};
-
-exports.dislike_comment = (req, res, next) => {
-  const comment_id = req.params.comment_id;
-  const logged_user_id = req.user_data._id;
-  Comment.findOneAndUpdate(
-    { _id: comment_id },
-    { $pull: { liked_by: logged_user_id } },
-    {new : true}
-  )
-    .populate("commenter", ["avatar", "username",] )
-    .exec()
-    .then((result) => {
-      if (result) {
-        res.status(201).json(result);
-      } else next(ApiError.resourceNotFound("Comment not Found!"));
-    })
-    .catch((err) => next(err));
-};
-
-function feedsSecret(secret) {
+async function feedsSecret(secret) {
   return {
     _id: secret._id,
     author: {
@@ -274,23 +161,22 @@ function feedsSecret(secret) {
     content: secret.content,
     timestamp: secret.timestamp,
     views_count: secret.views_count,
-    comments_count: secret.comments.length,
+    comments_count: await Comment.countDocuments({ secret_id: secret._id }),
   };
 }
 
-function detailedSecret(secret) {
+async function detailedSecret(secret) {
   return {
     _id: secret._id,
     author: {
-      _id : secret.author._id,
+      _id: secret.author._id,
       username: secret.author.username,
       avatar: secret.author.avatar,
     },
+    tag: secret.tag,
     content: secret.content,
     timestamp: secret.timestamp,
     views_count: secret.views_count,
-    comments_count: secret.comments.length,
-    comments: secret.comments,
+    comments_count: await Comment.countDocuments({ secret_id: secret._id }),
   };
 }
-

@@ -2,12 +2,13 @@ const  mongoose  = require("mongoose");
 const commentSchema = mongoose.Schema({
     _id : mongoose.Schema.Types.ObjectId,
     content : {type:String, required:true},
-    secret_id: {type:mongoose.Schema.Types.ObjectId,ref: 'Secret',require : true},
+    secret_id: {type:mongoose.Schema.Types.ObjectId,ref: 'Secret'},
+    parent_comment_id: {type:mongoose.Schema.Types.ObjectId,ref: 'Comment'},
     commenter:{type : mongoose.Schema.Types.ObjectId, ref:'User',required:true},
     timestamp: {type:String, default: getTime()},
     liked_by : [{type:mongoose.Schema.Types.ObjectId,ref:'User'}],
 });
-
+  ``
 
 const Comment = mongoose.model('Comment',commentSchema)
 

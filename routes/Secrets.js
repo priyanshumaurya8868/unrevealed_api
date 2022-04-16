@@ -12,11 +12,5 @@ router.delete("/:secret_id", check_auth,secretController.delete_secret_by_id);
 
 
 
-router.post("/comments", check_auth,secretController.post_comment );
-router.delete("/comments/:comment_id", check_auth, secretController.delete_comment_by_id);
-router.put("/comments/like/:comment_id", check_auth, secretController.like_comment);
-router.delete("/comments/dislike/:comment_id", check_auth, secretController.dislike_comment);
-
-
 
 module.exports = router;
