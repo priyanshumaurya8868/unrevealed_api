@@ -16,6 +16,8 @@ exports.reveal_secret = (req, res, next) => {
     _id: new mongoose.Types.ObjectId(),
     content: req.body.content,
     author: req.user_data._id,
+    tag:req.body.tag,
+    timestamp: "$$NOW"
   });
   secret
     .save()
@@ -44,7 +46,7 @@ exports.get_secrets = async (req, res, next) => {
     .skip(skip)
     .limit(limit)
     .populate(["author"])
-    .sort("-timestamp")
+    .sort({createdAt: -1})
     .exec()
     .then( async (secrets) => {
 
@@ -71,7 +73,7 @@ exports.get_my_secrets = (req, res, next) => {
     .skip(skip)
     .limit(limit)
     .populate(["author"])
-    .sort("-timestamp")
+    .sort({createdAt: -1})
     .exec()
     .then(async(secrets) => {
       console.log(secrets);
@@ -97,7 +99,7 @@ exports.update_secret = (req, res, next) => {
     .populate(["author"])
     .exec()
     .then(async (result) => {
-      res.json(await feedsSecret(result));
+      res.json(await detailedSecret(result));
     })
     .catch((err) => next(err));
 };
@@ -113,7 +115,7 @@ exports.get_secret_by_id = (req, res, next) => {
     .populate(["author"])
     .exec()
     .then(async (result) => {
-      if (result) res.status(200).json(await detailedSecret(result, logged_user_id));
+      if (result) res.status(200).json(await detailedSecret(result));
       else next(ApiError.resourceNotFound("No such secret exists!"));
     })
     .catch((err) => next(err));
@@ -151,6 +153,12 @@ exports.delete_secret_by_id = async (req, res, next) => {
 };
 
 async function feedsSecret(secret) {
+  var content_str = "";
+  if(secret.content.length > 120){
+content_str = secret.content.substring(0,120)+"..."
+  }else {
+ content_str = secret.content
+  }
   return {
     _id: secret._id,
     author: {
@@ -158,8 +166,9 @@ async function feedsSecret(secret) {
       avatar: secret.author.avatar,
       _id: secret.author._id,
     },
-    content: secret.content,
-    timestamp: secret.timestamp,
+    tag:secret.tag,
+    content: content_str,
+    timestamp: secret.createdAt,
     views_count: secret.views_count,
     comments_count: await Comment.countDocuments({ secret_id: secret._id }),
   };
@@ -169,13 +178,13 @@ async function detailedSecret(secret) {
   return {
     _id: secret._id,
     author: {
-      _id: secret.author._id,
       username: secret.author.username,
       avatar: secret.author.avatar,
+      _id: secret.author._id,
     },
-    tag: secret.tag,
+    tag:secret.tag,
     content: secret.content,
-    timestamp: secret.timestamp,
+    timestamp: secret.createdAt,
     views_count: secret.views_count,
     comments_count: await Comment.countDocuments({ secret_id: secret._id }),
   };

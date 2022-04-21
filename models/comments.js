@@ -5,10 +5,11 @@ const commentSchema = mongoose.Schema({
     secret_id: {type:mongoose.Schema.Types.ObjectId,ref: 'Secret'},
     parent_comment_id: {type:mongoose.Schema.Types.ObjectId,ref: 'Comment'},
     commenter:{type : mongoose.Schema.Types.ObjectId, ref:'User',required:true},
-    timestamp: {type:String, default: getTime()},
     liked_by : [{type:mongoose.Schema.Types.ObjectId,ref:'User'}],
-});
-  ``
+},
+{ timestamps: true }
+);
+  
 
 const Comment = mongoose.model('Comment',commentSchema)
 
