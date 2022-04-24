@@ -165,6 +165,7 @@ content_str = secret.content.substring(0,120)+"..."
       username: secret.author.username,
       avatar: secret.author.avatar,
       _id: secret.author._id,
+      gender : secret.author.gender
     },
     tag:secret.tag,
     content: content_str,
@@ -181,6 +182,7 @@ async function detailedSecret(secret) {
       username: secret.author.username,
       avatar: secret.author.avatar,
       _id: secret.author._id,
+      gender : secret.author.gender
     },
     tag:secret.tag,
     content: secret.content,

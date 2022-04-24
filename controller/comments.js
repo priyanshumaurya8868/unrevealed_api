@@ -56,7 +56,7 @@ exports.get_comments = async (req, res, next) => {
   Comment.find({ secret_id: secret_id })
     .skip(skip)
     .limit(limit)
-    .populate("commenter", ["avatar", "username"])
+    .populate("commenter")
     .sort({createdAt: -1})
     .exec()
     .then(async(result) => {
@@ -83,7 +83,7 @@ exports.like_comment = (req, res, next) => {
     { $addToSet: { liked_by: logged_user_id } },
     { new: true }
   )
-    .populate("commenter", ["avatar", "username"])
+    .populate("commenter")
     .exec()
     .then(async (result) => {
       if (result) {
@@ -101,7 +101,7 @@ exports.dislike_comment = (req, res, next) => {
     { $pull: { liked_by: logged_user_id } },
     { new: true }
   )
-    .populate("commenter", ["avatar", "username"])
+    .populate("commenter")
     .exec()
     .then(async(result) => {
       if (result) {
@@ -120,6 +120,7 @@ async function briefComment(comment, logged_user_id,id_obj) {
       username: comment.commenter.username,
       _id: comment.commenter._id,
       avatat: comment.commenter.avatar,
+      gender : comment.commenter.gender
     },
     timestamp: comment.createdAt,
     like_count: comment.liked_by.length,
@@ -156,12 +157,12 @@ exports.get_comment_by_id = (req, res,next)=>{
   const logged_user_id = req.user_data._id;
   const comment_id = req.params.comment_id;
   Comment.findOne({_id : comment_id})
-  .populate("commenter",["username","avatar"])
+  .populate(["commenter"])
   .exec()
   .then((parent)=>{
     if(parent){
       Comment.find({parent_comment_id : parent._id})
-    .populate("commenter",["username","avatar"])
+    .populate(["commenter"])
     .exec()
     .then(async (replies)=>{
       res.status(200).json({
