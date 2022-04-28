@@ -119,7 +119,7 @@ async function briefComment(comment, logged_user_id,id_obj) {
     commenter: {
       username: comment.commenter.username,
       _id: comment.commenter._id,
-      avatat: comment.commenter.avatar,
+      avatar: comment.commenter.avatar,
       gender : comment.commenter.gender
     },
     timestamp: comment.createdAt,

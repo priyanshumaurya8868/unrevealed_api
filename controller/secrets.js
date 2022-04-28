@@ -16,8 +16,7 @@ exports.reveal_secret = (req, res, next) => {
     _id: new mongoose.Types.ObjectId(),
     content: req.body.content,
     author: req.user_data._id,
-    tag:req.body.tag,
-    timestamp: "$$NOW"
+    tag:req.body.tag
   });
   secret
     .save()
@@ -50,16 +49,25 @@ exports.get_secrets = async (req, res, next) => {
     .exec()
     .then( async (secrets) => {
 
-      console.log(secrets);
-      res.status(200).json({
+      const obj = {
         status: "Success",
         total_count: total_count,
         skip: skip,
         limit: limit,
         present_count: secrets.length,
+      }
+      console.log(secrets);
+      if(secrets.length >0)
+     { res.status(200).json({
+       ...obj,
         secrets:  await Promise.all( secrets.map(feedsSecret))
-        // secrets.map(async(secret)=>await feedsSecret(secret))
-      });
+      });}
+      else {
+        res.status(200).json({
+          ...obj,
+          secrets:[]
+        })
+      }
     })
     .catch((error) => next(error));
 };

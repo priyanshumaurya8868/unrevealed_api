@@ -35,6 +35,7 @@ exports.signup = (req, res, next) => {
     .then((result) => {
       if (result.length >= 1) {
         next(ApiError.resourceConflict("username already exists!"));
+        return
       }
 
       if (password.length < 6) {
@@ -43,6 +44,8 @@ exports.signup = (req, res, next) => {
             "minimum length of password  should be 6"
           )
         );
+        return
+
       }
 
       bcrypt.hash(req.body.password, 10, (err, hash) => {
@@ -60,8 +63,7 @@ exports.signup = (req, res, next) => {
           .save()
           .then((user) => {
             console.log(`new Created user : ${user}`);
-            res
-              .status(201)
+              res.status(201)
               .json(
                 getAuthResponse(username, password, user._id, avatar, gender)
               );
