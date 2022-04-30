@@ -2,6 +2,7 @@ const express = require("express");
 const mongoose = require("mongoose");
 const ApiError = require("../error/ApiError");
 const Comment = require("../models/comments");
+const Secret = require("../models/secret");
 
 //->validate->save->findSecret->indexed
 exports.post_comment = async (req, res, next) => {
@@ -111,28 +112,48 @@ exports.dislike_comment = (req, res, next) => {
     .catch((err) => next(err));
 };
 
-async function briefComment(comment, logged_user_id,id_obj) {
+async function briefComment(comment, logged_user_id,id_obj ) {
+  const is_it_a_reply  = comment.parent_comment_id != null
+ const compliment_obj = {
+  ...id_obj,
+  _id: comment._id,
+  content: comment.content,
+  commenter: {
+    username: comment.commenter.username,
+    _id: comment.commenter._id,
+    avatar: comment.commenter.avatar,
+    gender : comment.commenter.gender
+  },
+  timestamp: comment.createdAt,
+  like_count: comment.liked_by.length,
+  is_liked_by_me: await comment.liked_by.includes(logged_user_id)
+ }
+ if(is_it_a_reply) {
+   return compliment_obj
+  }
+ else{
   return {
-    ...id_obj,
-    _id: comment._id,
-    content: comment.content,
-    commenter: {
-      username: comment.commenter.username,
-      _id: comment.commenter._id,
-      avatar: comment.commenter.avatar,
-      gender : comment.commenter.gender
-    },
-    timestamp: comment.createdAt,
-    like_count: comment.liked_by.length,
-    is_liked_by_me: await comment.liked_by.includes(logged_user_id),
+    ...compliment_obj,
     reply_count : await Comment.countDocuments({parent_comment_id : comment._id})
   };
 }
+}
 
-exports.reply_comment = (req, res, next) => {
+
+
+exports.reply_comment = async (req, res, next) => {
   const comment_id = req.body.comment_id;
+  const secret_id = req.body.secret_id
   const str = req.body.reply;
   const logged_user_id = req.user_data._id;
+try{
+  const secret = await Secret.findOne({_id : secret_id})
+  if(secret ==null){
+  next(ApiError.resourceNotFound("No Such secret exists"))
+  return
+}}catch(err){
+  next(ApiError.unprocessableEntity("Invalid secret_id"))
+}
 
   Comment({
     _id: mongoose.Types.ObjectId(),
@@ -146,7 +167,7 @@ exports.reply_comment = (req, res, next) => {
         .populate(["commenter"])
         .exec()
         .then(async (reply) => {
-          res.status(201).json(await briefComment(reply,logged_user_id,{parent_comment_id: comment_id}));
+          res.status(201).json(await briefComment(reply,logged_user_id,{parent_comment_id: comment_id, }));
         })
         .catch((err) => next(err));
     })
@@ -163,6 +184,7 @@ exports.get_comment_by_id = (req, res,next)=>{
     if(parent){
       Comment.find({parent_comment_id : parent._id})
     .populate(["commenter"])
+    .sort({createdAt: -1})
     .exec()
     .then(async (replies)=>{
       res.status(200).json({
