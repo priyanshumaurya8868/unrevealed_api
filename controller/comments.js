@@ -149,7 +149,10 @@ async function briefComment(comment, logged_user_id, id_obj) {
     is_liked_by_me: await comment.liked_by.includes(logged_user_id),
   };
   if (is_it_a_reply) {
-    return compliment_obj;
+    return {
+      ...compliment_obj,
+      parent_comment_id : comment._id
+    };
   } else {
     return {
       ...compliment_obj,
