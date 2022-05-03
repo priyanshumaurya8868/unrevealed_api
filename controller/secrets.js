@@ -16,7 +16,7 @@ exports.reveal_secret = (req, res, next) => {
     _id: new mongoose.Types.ObjectId(),
     content: req.body.content,
     author: req.user_data._id,
-    tag:req.body.tag
+    tag: req.body.tag.toLowerCase(),
   });
   secret
     .save()
@@ -27,7 +27,7 @@ exports.reveal_secret = (req, res, next) => {
         .populate("author")
         .exec()
         .then(async (result) => {
-          res.status(201).json( await feedsSecret(result));
+          res.status(201).json(await feedsSecret(result));
         })
         .catch((err) => next(err));
     })
@@ -40,36 +40,73 @@ exports.reveal_secret = (req, res, next) => {
 exports.get_secrets = async (req, res, next) => {
   const limit = req.query.limit || 20;
   const skip = req.query.skip || 0;
+  const author_id = req.query.author_id;
+  const tag = (req.query.tag || "").toLowerCase()
   const total_count = await Secret.countDocuments({});
-  Secret.find()
+ if(author_id != null){
+  Secret.find({
+    tag: { $regex: ".*" + tag + ".*" },
+    author: author_id
+  })
     .skip(skip)
     .limit(limit)
     .populate(["author"])
-    .sort({createdAt: -1})
+    .sort({ createdAt: -1 })
     .exec()
-    .then( async (secrets) => {
-
+    .then(async (secrets) => {
       const obj = {
         status: "Success",
         total_count: total_count,
         skip: skip,
         limit: limit,
         present_count: secrets.length,
-      }
+      };
       console.log(secrets);
-      if(secrets.length >0)
-     { res.status(200).json({
-       ...obj,
-        secrets:  await Promise.all( secrets.map(feedsSecret))
-      });}
-      else {
+      if (secrets.length > 0) {
         res.status(200).json({
           ...obj,
-          secrets:[]
-        })
+          secrets: await Promise.all(secrets.map(feedsSecret)),
+        });
+      } else {
+        res.status(200).json({
+          ...obj,
+          secrets: [],
+        });
       }
     })
     .catch((error) => next(error));
+ }else{
+  Secret.find({
+    tag: { $regex: ".*" + tag + ".*" },
+  })
+    .skip(skip)
+    .limit(limit)
+    .populate(["author"])
+    .sort({ createdAt: -1 })
+    .exec()
+    .then(async (secrets) => {
+      const obj = {
+        status: "Success",
+        total_count: total_count,
+        skip: skip,
+        limit: limit,
+        present_count: secrets.length,
+      };
+      console.log(secrets);
+      if (secrets.length > 0) {
+        res.status(200).json({
+          ...obj,
+          secrets: await Promise.all(secrets.map(feedsSecret)),
+        });
+      } else {
+        res.status(200).json({
+          ...obj,
+          secrets: [],
+        });
+      }
+    })
+    .catch((error) => next(error));
+ }
 };
 
 exports.get_my_secrets = (req, res, next) => {
@@ -81,18 +118,20 @@ exports.get_my_secrets = (req, res, next) => {
     .skip(skip)
     .limit(limit)
     .populate(["author"])
-    .sort({createdAt: -1})
+    .sort({ createdAt: -1 })
     .exec()
-    .then(async(secrets) => {
+    .then(async (secrets) => {
       console.log(secrets);
-      res.status(200).json({
-        status: "Success",
-        count: secrets.length,
-        secrets:  await Promise.all( secrets.map(feedsSecret))
-    })
-    .catch((error) => next(error));
-}
-    )}
+      res
+        .status(200)
+        .json({
+          status: "Success",
+          count: secrets.length,
+          secrets: await Promise.all(secrets.map(feedsSecret)),
+        })
+        .catch((error) => next(error));
+    });
+};
 
 exports.update_secret = (req, res, next) => {
   const secret_id = req.body.secret_id;
@@ -162,10 +201,11 @@ exports.delete_secret_by_id = async (req, res, next) => {
 
 async function feedsSecret(secret) {
   var content_str = "";
-  if(secret.content.length > 120){
-content_str = secret.content.substring(0,120)+"..."
-  }else {
- content_str = secret.content
+  const stringLength = 150;
+  if (secret.content.length > stringLength) {
+    content_str = secret.content.substring(0, stringLength) + "...";
+  } else {
+    content_str = secret.content;
   }
   return {
     _id: secret._id,
@@ -173,9 +213,9 @@ content_str = secret.content.substring(0,120)+"..."
       username: secret.author.username,
       avatar: secret.author.avatar,
       _id: secret.author._id,
-      gender : secret.author.gender
+      gender: secret.author.gender,
     },
-    tag:secret.tag,
+    tag: capitalizeFirstLetter(secret.tag),
     content: content_str,
     timestamp: secret.createdAt,
     views_count: secret.views_count,
@@ -190,12 +230,15 @@ async function detailedSecret(secret) {
       username: secret.author.username,
       avatar: secret.author.avatar,
       _id: secret.author._id,
-      gender : secret.author.gender
+      gender: secret.author.gender,
     },
-    tag:secret.tag,
+    tag: secret.tag,
     content: secret.content,
     timestamp: secret.createdAt,
     views_count: secret.views_count,
     comments_count: await Comment.countDocuments({ secret_id: secret._id }),
   };
+}
+function capitalizeFirstLetter(string) {
+  return string.charAt(0).toUpperCase() + string.slice(1).toLowerCase();
 }

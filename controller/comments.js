@@ -29,13 +29,11 @@ exports.post_comment = async (req, res, next) => {
         .exec()
         .then(async (result) => {
           console.log(result);
-          res
-            .status(201)
-            .json(
-              await briefComment(result, logged_user_id, {
-                secret_id: secret_id,
-              })
-            );
+          res.status(201).json(
+            await briefComment(result, logged_user_id, {
+              secret_id: secret_id,
+            })
+          );
         })
         .catch((err) => next(err));
     })
@@ -96,13 +94,11 @@ exports.like_comment = (req, res, next) => {
     .exec()
     .then(async (result) => {
       if (result) {
-        res
-          .status(201)
-          .json(
-            await briefComment(result, logged_user_id, {
-              secret_id: result.secret_id,
-            })
-          );
+        res.status(201).json(
+          await briefComment(result, logged_user_id, {
+            secret_id: result.secret_id,
+          })
+        );
       } else next(ApiError.resourceNotFound("Comment not Found!"));
     })
     .catch((err) => next(err));
@@ -120,13 +116,11 @@ exports.dislike_comment = (req, res, next) => {
     .exec()
     .then(async (result) => {
       if (result) {
-        res
-          .status(201)
-          .json(
-            await briefComment(result, logged_user_id, {
-              secret_id: result.secret_id,
-            })
-          );
+        res.status(201).json(
+          await briefComment(result, logged_user_id, {
+            secret_id: result.secret_id,
+          })
+        );
       } else next(ApiError.resourceNotFound("Comment not Found!"));
     })
     .catch((err) => next(err));
@@ -151,7 +145,7 @@ async function briefComment(comment, logged_user_id, id_obj) {
   if (is_it_a_reply) {
     return {
       ...compliment_obj,
-      parent_comment_id : comment._id
+      parent_comment_id: comment._id,
     };
   } else {
     return {
@@ -190,16 +184,11 @@ exports.reply_comment = async (req, res, next) => {
         .populate(["commenter"])
         .exec()
         .then(async (reply) => {
-          res
-            .status(201)
-            .json({
-              total_count : await Comment.countDocuments({parent_comment_id : comment_id}),
-              replies : await Promise.all( 
-                briefComment(reply, logged_user_id, {
-                parent_comment_id: comment_id,
-              })
-              )
-            });
+          res.status(201).json(
+            await briefComment(reply, logged_user_id, {
+              parent_comment_id: comment_id,
+            })
+          );
         })
         .catch((err) => next(err));
     })
@@ -254,16 +243,18 @@ exports.get_replies_by_comment_id = async (req, res, next) => {
 
   Comment.find({ parent_comment_id: comment_id })
     .populate("commenter")
+    .sort({ createdAt: -1 })
     .exec()
     .then(async (replies) => {
-    res.status(200).json(  {replies: await Promise.all(
-        replies.map((reply) =>
-          briefComment(reply, logged_user_id, {
-            parent_comment_id: comment_id,
-          })
-        )
-      )}
-      )
+      res.status(200).json({
+        replies: await Promise.all(
+          replies.map((reply) =>
+            briefComment(reply, logged_user_id, {
+              parent_comment_id: comment_id,
+            })
+          )
+        ),
+      });
     })
     .catch((err) => next(err));
 };
