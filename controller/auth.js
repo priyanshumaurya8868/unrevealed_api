@@ -125,7 +125,7 @@ function getAuthResponse(username, password, user_id, avatar, gender) {
       gender: gender,
     },
     process.env.JWT_KEY,
-    { expiresIn: "7d" }
+    { expiresIn: "21d" }
   );
 
   return {
