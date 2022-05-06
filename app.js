@@ -39,6 +39,9 @@ if(req.method == "OPTIONS"){
 }
 next();
 });
+
+
+
 app.use(express.static('images'))
 app.use("/avatars",avatarsRoute)
 app.use("/secrets",secretsRoute)
