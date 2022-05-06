@@ -1,9 +1,9 @@
 const http = require('http')
-const port = process.env.port
+const port = process.env.port ||2022
 const app = require('./app')
 
 const server = http.createServer(app)
 
-server.listen(2022,()=>{
+server.listen(port,()=>{
     console.log(`listening portNo. ${port}`)
 })
