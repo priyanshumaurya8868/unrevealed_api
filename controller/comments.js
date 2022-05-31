@@ -3,6 +3,7 @@ const mongoose = require("mongoose");
 const ApiError = require("../error/ApiError");
 const Comment = require("../models/comments");
 const Secret = require("../models/secret");
+const stringExtentions = require("../utils/stringExtentions")
 
 //->validate->save->findSecret->indexed
 exports.post_comment = async (req, res, next) => {
@@ -30,9 +31,7 @@ exports.post_comment = async (req, res, next) => {
         .then(async (result) => {
           console.log(result);
           res.status(201).json(
-            await briefComment(result, logged_user_id, {
-              secret_id: secret_id,
-            })
+            await briefComment(result, logged_user_id)
           );
         })
         .catch((err) => next(err));
@@ -42,13 +41,18 @@ exports.post_comment = async (req, res, next) => {
 
 exports.delete_comment_by_id = (req, res, next) => {
   const comment_id = req.params.comment_id;
-
   Comment.findOneAndDelete({ _id: comment_id })
     .exec()
     .then((result) => {
-      res.status(200).json({ status: "Success", message: "Comment Deleted!" });
-    })
-    .catch((err) => next(err));
+      console.log("comment str : "+ result.content + "commented by-> "+ result.commenter)
+      Comment.deleteMany({parent_comment_id : comment_id}).exec()
+      .then((result2)=>{
+        Comment.deleteMany({parent_reply_id : comment_id}).exec()
+        .then((result3)=>{
+          res.status(200).json({status: "Success", message : "deleted!"})
+        }).catch((err)=>next(err))
+      }).catch((err)=>next(err))
+    }).catch((err) => next(err));
 };
 
 exports.get_comments = async (req, res, next) => {
@@ -74,7 +78,7 @@ exports.get_comments = async (req, res, next) => {
         present_count: result.length,
         comments: await Promise.all(
           result.map((comment) =>
-            briefComment(comment, logged_user_id, { secret_id: secret_id })
+            briefComment(comment, logged_user_id)
           )
         ),
       });
@@ -95,9 +99,7 @@ exports.like_comment = (req, res, next) => {
     .then(async (result) => {
       if (result) {
         res.status(201).json(
-          await briefComment(result, logged_user_id, {
-            secret_id: result.secret_id,
-          })
+          await briefComment(result, logged_user_id)
         );
       } else next(ApiError.resourceNotFound("Comment not Found!"));
     })
@@ -117,21 +119,25 @@ exports.dislike_comment = (req, res, next) => {
     .then(async (result) => {
       if (result) {
         res.status(201).json(
-          await briefComment(result, logged_user_id, {
-            secret_id: result.secret_id,
-          })
+          await briefComment(result, logged_user_id)
         );
       } else next(ApiError.resourceNotFound("Comment not Found!"));
     })
     .catch((err) => next(err));
 };
 
-async function briefComment(comment, logged_user_id, id_obj) {
+async function briefComment(comment, logged_user_id) {
   const is_it_a_reply = comment.parent_comment_id != null;
+  var id_obj={}
+ if(is_it_a_reply){  id_obj = {
+    parent_comment_id : comment.parent_comment_id,
+    parent_reply_id : comment.parent_reply_id
+  }}
   const compliment_obj = {
     ...id_obj,
     _id: comment._id,
     content: comment.content,
+    secret_id : comment.secret_id,
     commenter: {
       username: comment.commenter.username,
       _id: comment.commenter._id,
@@ -158,7 +164,8 @@ async function briefComment(comment, logged_user_id, id_obj) {
 }
 
 exports.reply_comment = async (req, res, next) => {
-  const comment_id = req.body.comment_id;
+  const parent_reply_id = req.body.parent_reply_id; 
+  const parent_comment_id = req.body.parent_comment_id;
   const secret_id = req.body.secret_id;
   const str = req.body.reply;
   const logged_user_id = req.user_data._id;
@@ -175,7 +182,8 @@ exports.reply_comment = async (req, res, next) => {
   Comment({
     _id: mongoose.Types.ObjectId(),
     content: str,
-    parent_comment_id: comment_id,
+    parent_comment_id: parent_comment_id,
+    parent_reply_id:parent_reply_id,
     commenter: logged_user_id,
   })
     .save()
@@ -185,9 +193,7 @@ exports.reply_comment = async (req, res, next) => {
         .exec()
         .then(async (reply) => {
           res.status(201).json(
-            await briefComment(reply, logged_user_id, {
-              parent_comment_id: comment_id,
-            })
+            await briefComment(reply, logged_user_id)
           );
         })
         .catch((err) => next(err));
@@ -212,9 +218,7 @@ exports.get_comment_by_id = (req, res, next) => {
               ...(await briefComment(parent, logged_user_id)),
               replies: await Promise.all(
                 replies.map((reply) =>
-                  briefComment(reply, logged_user_id, {
-                    parent_comment_id: parent._id,
-                  })
+                  briefComment(reply, logged_user_id)
                 )
               ),
             });
@@ -227,13 +231,47 @@ exports.get_comment_by_id = (req, res, next) => {
     .catch((err) => next(err));
 };
 
+exports.updateCommentOrReply = async(req,res,next)=>{
+  const comment_id = req.body._id;
+  const updatedContent = req.body.content;
+  const logged_user_id = req.user_data._id
+  try{
+    if(stringExtentions.isBlank(updatedContent)){
+      next(ApiError.unprocessableEntity("Invalid Content!!"))
+    }
+   
+    Comment.findOne({_id:comment_id}).exec().then((comment)=>{
+    if(comment.commenter != logged_user_id){
+    next(ApiError.unauthorizedResponse("You Dont have privilege to alter this!!"))
+  return;
+    }
+   Comment.findOneAndUpdate(
+     {_id : comment_id},
+     {$set : {content : updatedContent}},
+     { new: true } )
+     .populate("commenter")
+     .exec()
+    .then( async(update)=>{
+    res.status(200).json( await briefComment(update,logged_user_id))
+    return;
+   }).catch((err)=>next(err))
+    }).catch((err)=>next(err))  
+  
+  } catch (err) {
+    next(err)
+    return;
+  }
+
+}
+
+
 exports.get_replies_by_comment_id = async (req, res, next) => {
   const comment_id = req.params.parent_comment_id;
   const logged_user_id = req.user_data._id;
   try {
-    const secret = await Comment.findOne({ _id: comment_id });
-    if (secret == null) {
-      next(ApiError.resourceNotFound("No Such secret exists"));
+    const comment = await Comment.findOne({ _id: comment_id });
+    if (comment == null) {
+      next(ApiError.resourceNotFound("No such comment exists!!"));
       return;
     }
   } catch (err) {
@@ -243,18 +281,17 @@ exports.get_replies_by_comment_id = async (req, res, next) => {
 
   Comment.find({ parent_comment_id: comment_id })
     .populate("commenter")
-    .sort({ createdAt: -1 })
     .exec()
     .then(async (replies) => {
       res.status(200).json({
         replies: await Promise.all(
           replies.map((reply) =>
-            briefComment(reply, logged_user_id, {
-              parent_comment_id: comment_id,
-            })
+            briefComment(reply, logged_user_id)
           )
         ),
       });
     })
     .catch((err) => next(err));
 };
+
+

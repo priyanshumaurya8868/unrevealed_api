@@ -4,6 +4,7 @@ const commentSchema = mongoose.Schema({
     content : {type:String, required:true},
     secret_id: {type:mongoose.Schema.Types.ObjectId,ref: 'Secret'},
     parent_comment_id: {type:mongoose.Schema.Types.ObjectId,ref: 'Comment'},
+    parent_reply_id: {type:mongoose.Schema.Types.ObjectId,ref: 'Comment'},
     commenter:{type : mongoose.Schema.Types.ObjectId, ref:'User',required:true},
     liked_by : [{type:mongoose.Schema.Types.ObjectId,ref:'User'}],
 },

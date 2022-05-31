@@ -83,7 +83,7 @@ exports.login = (req, res, next) => {
   User.findOne({ username: username })
     .exec()
     .then((users) => {
-      if (users.lenght < 1) {
+      if (users ==null || users.lenght < 1) {
         next(ApiError.unauthorizedResponse("Incorrect username or password"));
       } else {
         bcrypt.compare(password, users.password, (error, result) => {
