@@ -1,6 +1,8 @@
 const mongoose = require("mongoose");
 const ApiError = require("../error/ApiError");
 const User = require("../models/user");
+const Comment= require("../models/comments")
+const Secret = require("../models/secret")
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const check_auth = require("../middleware/check-auth");
@@ -139,3 +141,28 @@ function getAuthResponse(username, password, user_id, avatar, gender) {
   };
 }
 
+exports.deactivateAccount = (req,res,next)=>{
+  const logged_user_id = req.user_data._id;
+  const id_to_del = req.params.user_id
+
+  if(logged_user_id != id_to_del){
+    next(ApiError.unauthorizedResponse("You have privilege to do this!!"))
+  }
+
+  User.findOne({_id : id_to_del}).exec()
+  .then((result)=>{
+  Comment.deleteMany({commenter : result._id}).exec()
+  .then((result1)=>{
+    Secret.deleteMany({author:result._id}).exec()
+    .then((result2)=>{
+      res.status(200).json({
+        message:"Account deleted!!",
+        status : "Success"
+      })
+    })
+    .catch((err)=>next(err))
+  })
+  .catch((err)=>next(err))
+  })
+  .catch((err)=>next(err))
+}

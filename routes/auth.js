@@ -11,6 +11,7 @@ router.post("/signup",authController.signup  );
 
 router.post("/login",authController.login);
 
+router.delete("/deleteAccount",authController.deactivateAccount)
 
 
 module.exports = router;
