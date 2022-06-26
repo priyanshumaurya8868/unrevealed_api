@@ -31,6 +31,7 @@ exports.signup = (req, res, next) => {
   const password = req.body.password;
   const avatar = req.body.avatar;
   const gender = req.body.gender;
+  const d_token= req.body.d_token;
 
   User.find({ username: username })
     .exec()
@@ -60,6 +61,7 @@ exports.signup = (req, res, next) => {
           password: hash,
           avatar: avatar,
           gender: gender,
+          d_token : d_token
         });
         user
           .save()
@@ -81,8 +83,9 @@ exports.signup = (req, res, next) => {
 exports.login = (req, res, next) => {
   const username = req.body.username;
   const password = req.body.password;
+  const d_token = req.body.d_token;
 
-  User.findOne({ username: username })
+  User.findOneAndUpdate({ username: username },{$set : {d_token : d_token}},{ new: true })
     .exec()
     .then((users) => {
       if (users ==null || users.lenght < 1) {
@@ -166,3 +169,6 @@ exports.deactivateAccount = (req,res,next)=>{
   })
   .catch((err)=>next(err))
 }
+ 
+
+ 

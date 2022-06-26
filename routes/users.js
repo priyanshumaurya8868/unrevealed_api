@@ -11,6 +11,9 @@ router.get("/",check_auth,user_controller.get_user)
 // 2. authour profile by Id
 router.get("/:user_id", check_auth,user_controller.get_user_by_id);
 
+router.put("/deviceToken",check_auth,user_controller.recieveDeviceToken)
+
+router.put("/devicetoken/:d_token")
 
 module.exports = router;
 

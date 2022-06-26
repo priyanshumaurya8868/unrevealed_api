@@ -4,6 +4,12 @@ const ApiError = require("../error/ApiError");
 const Comment = require("../models/comments");
 const Secret = require("../models/secret");
 const stringExtentions = require("../utils/stringExtentions")
+const FCM = require("fcm-node");
+const User = require("../models/user");
+const server_key = process.env.server_key
+const fcm = new FCM(server_key);
+
+
 
 //->validate->save->findSecret->indexed
 exports.post_comment = async (req, res, next) => {
@@ -28,10 +34,26 @@ exports.post_comment = async (req, res, next) => {
       Comment.findOne({ _id: cmt._id })
         .populate("commenter")
         .exec()
-        .then(async (result) => {
-          console.log(result);
+        .then(async (comment) => {
+         
+        //send notification
+         if(logged_user_id != comment.commenter._id){
+           Secret.findOne({_id : secret_id})
+          .populate("author")
+          .exec()
+          .then((post)=>{
+           const post_owner_d_token  = post.author.d_token
+           const tittle = comment.commenter.username
+           const description = "Commented On You Post \""+ comment.content+ "\""
+           const dp = comment.commenter.avatar
+           const route = "view_secret_screen" + "?secret_id=" + comment.secret_id
+           sendnotification(post_owner_d_token,tittle,description,dp,route)
+          }).catch((err)=>next(err))
+        }
+
+          console.log(comment);
           res.status(201).json(
-            await briefComment(result, logged_user_id)
+            await briefComment(comment, logged_user_id)
           );
         })
         .catch((err) => next(err));
@@ -56,6 +78,7 @@ exports.delete_comment_by_id = (req, res, next) => {
 };
 
 exports.get_comments = async (req, res, next) => {
+
   const logged_user_id = req.user_data._id;
   const secret_id = req.params.secret_id;
   const limit = req.query.limit || 20;
@@ -98,11 +121,23 @@ exports.like_comment = (req, res, next) => {
     .exec()
     .then(async (result) => {
       if (result) {
+
+        // send notification
+       if(logged_user_id != result.commenter._id){
+         User.findOne({_id : logged_user_id}).exec()
+        .then((liker)=>{
+          const liker_name = liker.username
+          const description = "Liked you compliment \"" + result.content +"\""
+          const route  = "view_secret_screen" + "?secret_id=" + result.secret_id
+          sendnotification(result.commenter.d_token,liker_name, description, liker.avatar, route  )
+        }).catch((err)=>next(err))
+      }
+
         res.status(201).json(
           await briefComment(result, logged_user_id)
-        );
+          );
       } else next(ApiError.resourceNotFound("Comment not Found!"));
-    })
+    }) 
     .catch((err) => next(err));
 };
 
@@ -164,13 +199,18 @@ async function briefComment(comment, logged_user_id) {
 }
 
 exports.reply_comment = async (req, res, next) => {
+
   const parent_reply_id = req.body.parent_reply_id; 
   const parent_comment_id = req.body.parent_comment_id;
+  const mention_uid = req.body.mention_uid;
   const secret_id = req.body.secret_id;
   const str = req.body.reply;
   const logged_user_id = req.user_data._id;
+
+  var secret 
+  var parent_comment
   try {
-    const secret = await Secret.findOne({ _id: secret_id });
+     secret = await Secret.findOne({ _id: secret_id }).populate("author");
     if (secret == null) {
       next(ApiError.resourceNotFound("No Such secret exists"));
       return;
@@ -179,6 +219,17 @@ exports.reply_comment = async (req, res, next) => {
     next(ApiError.unprocessableEntity("Invalid secret_id"));
   }
 
+  try {
+     parent_comment = await Comment.findOne({ _id: parent_comment_id }).populate("commenter");
+    if (parent_comment == null) {
+      next(ApiError.resourceNotFound("No Such comment exists"));
+      return;
+    }
+  } catch (err) {
+    next(ApiError.unprocessableEntity("Invalid parent_comment_id"));
+  }
+
+ 
   Comment({
     _id: mongoose.Types.ObjectId(),
     content: str,
@@ -192,6 +243,20 @@ exports.reply_comment = async (req, res, next) => {
         .populate(["commenter"])
         .exec()
         .then(async (reply) => {
+         
+         if(logged_user_id != mention_uid){ User.findOne({_id : mention_uid}).exec()
+          .then((mentioned_user)=>{
+             sendnotification(
+              mentioned_user.d_token,
+              reply.commenter.username,
+              `Mentioned you in a comment \"${reply.content}\"`,
+              mentioned_user.avatar,
+              "view_secret_screen" + "?secret_id=" + reply.secret_id
+             )
+          })
+          .catch((err)=>next(err))
+        }
+ 
           res.status(201).json(
             await briefComment(reply, logged_user_id)
           );
@@ -295,3 +360,29 @@ exports.get_replies_by_comment_id = async (req, res, next) => {
 };
 
 
+const sendnotification = (d_token, title, description,dp,screen_route)=>{
+
+  var message = { //this may vary according to the message type (single recipient, multicast, topic, et cetera)
+    to:d_token,
+    collapse_key: 'your_collapse_key',
+    
+    notification: {
+      
+        title: title, 
+        body: description ,
+    },
+    
+    data: {  //you can send only notification or only data(or include both)
+        screen_route: screen_route,
+        dp : dp
+    }
+};
+
+fcm.send(message, function(err, response){
+    if (err) {
+        console.log("Something has gone wrong!");
+    } else {
+        console.log("Successfully sent with response: ", response);
+    }
+});
+}

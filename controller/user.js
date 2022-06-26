@@ -36,4 +36,23 @@ exports.get_user_by_id = (req, res, next) => {
       .catch((err) => next(err));
   }
 
-  
+  // {
+//   userID : "",
+//   d_token : ""
+// }
+exports.recieveDeviceToken = (req,res,next)=>{
+
+  const userId   = req.user_data._id
+  const d_token = req.params.d_token;
+
+  User.findOneAndUpdate({_id: userId},{$set : {d_token : d_token}})
+  .exec()
+  .then((res)=>{
+    res.status(200,{
+      status : "Success",
+      msg : "Device token registered !!"
+    })
+  })
+  .catch((err)=>next(err))
+
+}
