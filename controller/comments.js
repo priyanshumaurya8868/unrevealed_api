@@ -250,7 +250,7 @@ exports.reply_comment = async (req, res, next) => {
               mentioned_user.d_token,
               reply.commenter.username,
               `Mentioned you in a comment \"${reply.content}\"`,
-              mentioned_user.avatar,
+              reply.commenter.avatar,
               "view_secret_screen" + "?secret_id=" + reply.secret_id
              )
           })
