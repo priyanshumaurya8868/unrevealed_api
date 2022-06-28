@@ -41,7 +41,9 @@ exports.signup = (req, res, next) => {
         return
       }
 
+      console.log(`sign up  with username ${username}, password : ${password} & its length ${password.lenght}`)
       if (password.length < 6) {
+
         next(
           ApiError.unprocessableEntity(
             "minimum length of password  should be 6"
@@ -130,7 +132,6 @@ function getAuthResponse(username, password, user_id, avatar, gender) {
       gender: gender,
     },
     process.env.JWT_KEY,
-    { expiresIn: "21d" }
   );
 
   return {
