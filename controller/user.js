@@ -47,8 +47,8 @@ exports.recieveDeviceToken = (req,res,next)=>{
 
   User.findOneAndUpdate({_id: userId},{$set : {d_token : d_token}})
   .exec()
-  .then((res)=>{
-    res.status(200,{
+  .then((result)=>{
+    res.status(200).json({
       status : "Success",
       msg : "Device token registered !!"
     })

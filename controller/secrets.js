@@ -62,7 +62,7 @@ exports.get_secrets = async (req, res, next) => {
         limit: limit,
         present_count: secrets.length,
       };
-      console.log(secrets);
+    
       if (secrets.length > 0) {
         res.status(200).json({
           ...obj,
@@ -93,7 +93,6 @@ exports.get_secrets = async (req, res, next) => {
         limit: limit,
         present_count: secrets.length,
       };
-      console.log(secrets);
       if (secrets.length > 0) {
         res.status(200).json({
           ...obj,
@@ -211,6 +210,49 @@ exports.delete_secret_by_id = async (req, res, next) => {
     .catch((err) => next(err));
 };
 
+exports.get_tags = (req,res,next)=>{
+
+ const default_tags = [
+    "Life",
+    "Food",
+    "Stimulants",
+    "Inner-voices",
+    "Music",
+    "Fitness",
+    "Travel",
+    "Work",
+    "Second-thoughts",
+    "Investments",
+    "Politics",
+    "Startups",
+    "Sports",
+    "Automobile",
+    "Education",
+    "Technology",
+    "Movies",
+    "TV Series",
+    "Books",
+    "Stand-up",
+    "Creativity",
+    "Universe",
+    "Philosophy",
+    "Relationships",
+    "Pets",
+    "Fashion",
+    "Feminism",
+    "Depression",
+    "Social Cause",
+    "Marriage"
+    ]
+
+    res.status(200).json({
+      tags : default_tags,
+      status : "Success",
+      total_count : default_tags.length
+    })
+
+}
+
 async function feedsSecret(secret) {
   var content_str = "";
   const stringLength = 150;
@@ -251,6 +293,10 @@ async function detailedSecret(secret) {
     comments_count: await Comment.countDocuments({ secret_id: secret._id }),
   };
 }
+
+
+
+
 function capitalizeFirstLetter(string) {
   return string.charAt(0).toUpperCase() + string.slice(1).toLowerCase();
 }
