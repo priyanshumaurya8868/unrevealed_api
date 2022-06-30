@@ -216,7 +216,6 @@ exports.get_tags = (req,res,next)=>{
     "Life",
     "Food",
     "Stimulants",
-    "Inner-voices",
     "Music",
     "Fitness",
     "Travel",
@@ -241,6 +240,8 @@ exports.get_tags = (req,res,next)=>{
     "Fashion",
     "Feminism",
     "Depression",
+    "Guilt",
+    "Dreams", 
     "Social Cause",
     "Marriage"
     ]

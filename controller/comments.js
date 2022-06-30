@@ -35,9 +35,11 @@ exports.post_comment = async (req, res, next) => {
         .populate("commenter")
         .exec()
         .then(async (comment) => {
+
+          const secret = await Secret.findOne({_id : comment.secret_id})
          
         //send notification
-         if(logged_user_id != comment.commenter._id){
+         if(logged_user_id != secret.author){
            Secret.findOne({_id : secret_id})
           .populate("author")
           .exec()
@@ -380,6 +382,7 @@ const sendnotification = (d_token, title, description,dp,screen_route)=>{
 
 fcm.send(message, function(err, response){
     if (err) {
+      console.log(err)
         console.log("Something has gone wrong!");
     } else {
         console.log("Successfully sent with response: ", response);
