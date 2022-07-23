@@ -16,10 +16,13 @@ exports.post_comment = async (req, res, next) => {
   const str = req.body.comment;
   const secret_id = req.body.secret_id;
   const logged_user_id = req.user_data._id;
-
+  const secret = await Secret.findOne({_id : secret_id})
   //...validate
-  if (!str || str.trim().length === 0) {
+  if (!str || str.trim().length === 0 ) {
     next(ApiError.unprocessableEntity("Comment can't be blank!"));
+  }
+  if(!secret){
+    next(ApiError.resourceNotFound("No such secret exists!!"))
   }
   //...save
   Comment({
@@ -35,9 +38,6 @@ exports.post_comment = async (req, res, next) => {
         .populate("commenter")
         .exec()
         .then(async (comment) => {
-
-          const secret = await Secret.findOne({_id : comment.secret_id})
-         
         //send notification
          if(logged_user_id != secret.author){
            Secret.findOne({_id : secret_id})
@@ -52,7 +52,6 @@ exports.post_comment = async (req, res, next) => {
            sendnotification(post_owner_d_token,tittle,description,dp,route)
           }).catch((err)=>next(err))
         }
-
           console.log(comment);
           res.status(201).json(
             await briefComment(comment, logged_user_id)
@@ -64,8 +63,11 @@ exports.post_comment = async (req, res, next) => {
 };
 
 exports.delete_comment_by_id = (req, res, next) => {
-  const comment_id = req.params.comment_id;
-  Comment.findOneAndDelete({ _id: comment_id })
+  
+  const logged_user_id = req.user_data._id;
+ const comment_id = req.params.comment_id;
+
+  Comment.findOneAndDelete({ _id: comment_id, commenter : logged_user_id })
     .exec()
     .then((result) => {
       console.log("comment str : "+ result.content + "commented by-> "+ result.commenter)
@@ -80,14 +82,13 @@ exports.delete_comment_by_id = (req, res, next) => {
 };
 
 exports.get_comments = async (req, res, next) => {
-
   const logged_user_id = req.user_data._id;
   const secret_id = req.params.secret_id;
   const limit = req.query.limit || 20;
   const skip = req.query.skip || 0;
   const total_count = await Comment.countDocuments({ secret_id: secret_id });
 
-  Comment.find({ secret_id: secret_id })
+  Comment.find({ secret_id: secret_id, is_reply : false })
     .skip(skip)
     .limit(limit)
     .populate("commenter")
@@ -112,25 +113,26 @@ exports.get_comments = async (req, res, next) => {
 };
 
 exports.like_comment = (req, res, next) => {
-  const comment_id = req.params.comment_id;
+  const comment_id = req.params.compliment_id;
   const logged_user_id = req.user_data._id;
   Comment.findOneAndUpdate(
     { _id: comment_id },
     { $addToSet: { liked_by: logged_user_id } },
     { new: true }
   )
-    .populate("commenter")
+    .populate(["commenter"])
     .exec()
     .then(async (result) => {
       if (result) {
-
+        console.log(result)
         // send notification
        if(logged_user_id != result.commenter._id){
          User.findOne({_id : logged_user_id}).exec()
         .then((liker)=>{
           const liker_name = liker.username
-          const description = "Liked you compliment \"" + result.content +"\""
+          const description = "Liked your compliment \"" + result.content +"\""
           const route  = "view_secret_screen" + "?secret_id=" + result.secret_id
+          console.log("sending route with notification "+route)
           sendnotification(result.commenter.d_token,liker_name, description, liker.avatar, route  )
         }).catch((err)=>next(err))
       }
@@ -144,7 +146,7 @@ exports.like_comment = (req, res, next) => {
 };
 
 exports.dislike_comment = (req, res, next) => {
-  const comment_id = req.params.comment_id;
+  const comment_id = req.params.compliment_id;
   const logged_user_id = req.user_data._id;
   Comment.findOneAndUpdate(
     { _id: comment_id },
@@ -164,9 +166,9 @@ exports.dislike_comment = (req, res, next) => {
 };
 
 async function briefComment(comment, logged_user_id) {
-  const is_it_a_reply = comment.parent_comment_id != null;
+  
   var id_obj={}
- if(is_it_a_reply){  id_obj = {
+ if(comment.is_reply){  id_obj = {
     parent_comment_id : comment.parent_comment_id,
     parent_reply_id : comment.parent_reply_id
   }}
@@ -185,10 +187,10 @@ async function briefComment(comment, logged_user_id) {
     like_count: comment.liked_by.length,
     is_liked_by_me: await comment.liked_by.includes(logged_user_id),
   };
-  if (is_it_a_reply) {
+  if (comment.is_reply) {
     return {
       ...compliment_obj,
-      parent_comment_id: comment._id,
+      ...id_obj
     };
   } else {
     return {
@@ -200,10 +202,19 @@ async function briefComment(comment, logged_user_id) {
   }
 }
 
+// {
+//   "parent_reply_id" : "",
+//   "parent_comment_id" : "",
+//   "mention_uid" : "",
+//   "secret_id" : "",
+//   "reply" : ""
+// }
+
 exports.reply_comment = async (req, res, next) => {
 
-  const parent_reply_id = req.body.parent_reply_id; 
   const parent_comment_id = req.body.parent_comment_id;
+  //if parent_reply_id is null  then we are replying a comment else we are replying to another reply of a comment
+  const parent_reply_id = req.body.parent_reply_id ||req.body.parent_comment_id; 
   const mention_uid = req.body.mention_uid;
   const secret_id = req.body.secret_id;
   const str = req.body.reply;
@@ -235,9 +246,11 @@ exports.reply_comment = async (req, res, next) => {
   Comment({
     _id: mongoose.Types.ObjectId(),
     content: str,
-    parent_comment_id: parent_comment_id,
+    parent_comment_id: parent_comment._id,
     parent_reply_id:parent_reply_id,
     commenter: logged_user_id,
+    secret_id:secret_id,
+    is_reply : true
   })
     .save()
     .then((result) => {
@@ -246,7 +259,9 @@ exports.reply_comment = async (req, res, next) => {
         .exec()
         .then(async (reply) => {
          
-         if(logged_user_id != mention_uid){ User.findOne({_id : mention_uid}).exec()
+
+         if(mention_uid && mention_uid.length > 0 && logged_user_id != mention_uid){ 
+          await User.findOne({_id : mention_uid }).exec()
           .then((mentioned_user)=>{
              sendnotification(
               mentioned_user.d_token,
@@ -346,7 +361,7 @@ exports.get_replies_by_comment_id = async (req, res, next) => {
     return;
   }
 
-  Comment.find({ parent_comment_id: comment_id })
+  Comment.find({ parent_comment_id: comment_id, is_reply:true })
     .populate("commenter")
     .exec()
     .then(async (replies) => {

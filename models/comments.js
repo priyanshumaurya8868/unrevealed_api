@@ -7,7 +7,7 @@ const commentSchema = mongoose.Schema({
     parent_reply_id: {type:mongoose.Schema.Types.ObjectId,ref: 'Comment'},
     commenter:{type : mongoose.Schema.Types.ObjectId, ref:'User',required:true},
     liked_by : [{type:mongoose.Schema.Types.ObjectId,ref:'User'}],
-    
+    is_reply : {type: Boolean,default: false}
 },
 { timestamps: true }
 );

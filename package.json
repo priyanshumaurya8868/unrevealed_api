@@ -1,7 +1,6 @@
 {
   "name": "urevealed_api",
   "version": "1.0.0",
-  "description": "",
   "main": "app.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
@@ -18,5 +17,15 @@
     "mongoose": "^6.2.6",
     "morgan": "^1.10.0",
     "nodemon": "^2.0.16"
-  }
+  },
+  "devDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/priyanshumaurya8868/unrevealed_api.git"
+  },
+  "bugs": {
+    "url": "https://github.com/priyanshumaurya8868/unrevealed_api/issues"
+  },
+  "homepage": "https://github.com/priyanshumaurya8868/unrevealed_api#readme",
+  "description": ""
 }

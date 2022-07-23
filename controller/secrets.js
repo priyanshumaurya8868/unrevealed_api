@@ -8,7 +8,8 @@ const stringExtentions= require("../utils/stringExtentions")
 // const check_auth = require("../middleware/check-auth");
 
 // {
-// "content": "this is my secret, that now i'm going to reaveal annoymounsly"
+// "content": "this is my secret, that now i'm going to reaveal annoymounsly",
+// "tag": "relationship"
 // }
 
 exports.reveal_secret = (req, res, next) => {
@@ -39,8 +40,8 @@ exports.reveal_secret = (req, res, next) => {
 };
 
 exports.get_secrets = async (req, res, next) => {
-  const limit = req.query.limit || 20;
-  const skip = req.query.skip || 0;
+  const limit = Number(req.query.limit || 20);
+  const skip = Number(req.query.skip || 0);
   const author_id = req.query.author_id;
   const tag = (req.query.tag || "").toLowerCase()
   const total_count = await Secret.countDocuments({});
@@ -60,6 +61,7 @@ exports.get_secrets = async (req, res, next) => {
         total_count: total_count,
         skip: skip,
         limit: limit,
+        tag:tag||"All",
         present_count: secrets.length,
       };
     
@@ -91,6 +93,7 @@ exports.get_secrets = async (req, res, next) => {
         total_count: total_count,
         skip: skip,
         limit: limit,
+        tag:tag||"All",
         present_count: secrets.length,
       };
       if (secrets.length > 0) {
@@ -113,8 +116,9 @@ exports.get_my_secrets = (req, res, next) => {
   const user_id = req.user_data._id;
   const limit = req.query.limit || 20;
   const skip = req.query.skip || 0;
+  const tag = req.query.tag|| "";
 
-  Secret.find({ author: user_id })
+  Secret.find({ author: user_id,  tag: { $regex: ".*" + tag + ".*" } })
     .skip(skip)
     .limit(limit)
     .populate(["author"])
@@ -129,14 +133,14 @@ exports.get_my_secrets = (req, res, next) => {
           count: secrets.length,
           secrets: await Promise.all(secrets.map(feedsSecret)),
         })
-        .catch((error) => next(error));
-    });
+    }) .catch((error) => next(error));
 };
 
 exports.update_secret = (req, res, next) => {
   const secret_id = req.body.secret_id;
   const updated_content = req.body.content;
   const updated_tag = req.body.tag;
+  const logged_user_id = req.user_data._id;
   if(stringExtentions.isBlank(updated_content)){
     next(ApiError.unprocessableEntity("Blank or invalid content!!"))
   }
@@ -144,7 +148,7 @@ exports.update_secret = (req, res, next) => {
     next(ApiError.unprocessableEntity("Blank or invalid tag!!"))
   }
   Secret.findOneAndUpdate(
-    { _id: secret_id },
+    { _id: secret_id, author : logged_user_id },
     {
       $set: { content: updated_content, tag : updated_tag },
     },
@@ -153,7 +157,8 @@ exports.update_secret = (req, res, next) => {
     .populate(["author"])
     .exec()
     .then(async (result) => {
-      res.json(await detailedSecret(result));
+      if(result){res.json(await detailedSecret(result));}
+      else next(ApiError.unauthorizedResponse("You dont have permission to update this !!"))
     })
     .catch((err) => next(err));
 };
@@ -274,7 +279,7 @@ async function feedsSecret(secret) {
     content: content_str,
     timestamp: secret.createdAt,
     views_count: secret.views_count,
-    comments_count: await Comment.countDocuments({ secret_id: secret._id }),
+    comments_count: await Comment.countDocuments({ secret_id: secret._id,is_reply : false }),
   };
 }
 

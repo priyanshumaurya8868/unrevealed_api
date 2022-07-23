@@ -8,7 +8,7 @@ const check_auth = require("../middleware/check-auth");
 
 exports.get_user= (req,res,next)=>{
 const user_id = req.user_data._id
-User.findById(user_id).select(["username", "_id","gender","secrets","avatar"])
+User.findById(user_id).select(["username", "_id","gender","secrets","avatar", "d_token"])
 .exec()
 .then(
   (result) => {
@@ -36,10 +36,7 @@ exports.get_user_by_id = (req, res, next) => {
       .catch((err) => next(err));
   }
 
-  // {
-//   userID : "",
-//   d_token : ""
-// }
+  
 exports.recieveDeviceToken = (req,res,next)=>{
 
   const userId   = req.user_data._id
@@ -48,10 +45,13 @@ exports.recieveDeviceToken = (req,res,next)=>{
   User.findOneAndUpdate({_id: userId},{$set : {d_token : d_token}})
   .exec()
   .then((result)=>{
-    res.status(200).json({
+    if(result)
+   { res.status(200).json({
       status : "Success",
       msg : "Device token registered !!"
-    })
+    })}else{
+      next(ApiError.resourceNotFound("user not found!!"))
+    }
   })
   .catch((err)=>next(err))
 

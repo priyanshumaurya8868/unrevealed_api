@@ -5,7 +5,6 @@ const Comment= require("../models/comments")
 const Secret = require("../models/secret")
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const check_auth = require("../middleware/check-auth");
 
 // ... req body
 //  {
@@ -145,30 +144,37 @@ function getAuthResponse(username, password, user_id, avatar, gender) {
   };
 }
 
-exports.deactivateAccount = (req,res,next)=>{
-  const logged_user_id = req.user_data._id;
-  const id_to_del = req.params.user_id
-
-  if(logged_user_id != id_to_del){
-    next(ApiError.unauthorizedResponse("You have privilege to do this!!"))
-  }
-
-  User.findOne({_id : id_to_del}).exec()
-  .then((result)=>{
-  Comment.deleteMany({commenter : result._id}).exec()
-  .then((result1)=>{
-    Secret.deleteMany({author:result._id}).exec()
-    .then((result2)=>{
-      res.status(200).json({
-        message:"Account deleted!!",
-        status : "Success"
-      })
+exports.deactivateAccount = async (req,res,next)=>{
+const logged_user_id = req.user_data._id;
+try{
+ await Comment.find({commenter : logged_user_id}).then(async (result)=>{
+    result.map(async (p_cmt_to_del)=>{
+     await Comment.deleteOne({_id : p_cmt_to_del}).exec() //comment
+     await Comment.deleteMany({parent_comment_id : p_cmt_to_del}).exec()//reply
+     await Comment.deleteMany({parent_reply_id : p_cmt_to_del}).exec() // reply to reply
     })
-    .catch((err)=>next(err))
-  })
-  .catch((err)=>next(err))
-  })
-  .catch((err)=>next(err))
+
+   await Secret.find({author: logged_user_id})
+    .then(async (result)=>{
+      result.map(async(secret)=>{
+      await  Comment.deleteMany({secret_id : secret._id})
+      await Secret.deleteOne({_id:secret._id})
+      })
+    }).catch((err)=>next(err))
+
+    User.deleteOne({_id : logged_user_id}).then((result)=>{
+      if(result){
+        res.status(200).json({
+          status : "Success",
+          message: "Account deleted successfully!!"
+        })
+      }
+    }).catch((err)=>next(err))
+  }).catch((err)=>next(err))
+  }catch(err){
+    next(ApiError.unprocessableEntity(err.message||"Something went wrong!!"))
+  }
+  
 }
  
 
