@@ -1151,13 +1151,13 @@ Response Body:
 
 
 22. **Update Device token.**
-### PUT:: /users/devicetoken/:d\_token
+### PUT:: /users/devicetoken?d\_token
 
 Register Device token for push notification.
 
 Authentication required, Returns a response body
 
-Required param : d\_token
+Required field : d\_token
 
 Response Body:
 

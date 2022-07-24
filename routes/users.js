@@ -7,11 +7,11 @@ const user_controller = require("../controller/user")
 
 // 1. get user profile
 router.get("/",check_auth,user_controller.get_user)
-
+ 
 // 2. authour profile by Id
 router.get("/:user_id", check_auth,user_controller.get_user_by_id);
 //update device token
-router.put("/devicetoken/:d_token",check_auth,user_controller.recieveDeviceToken)
+router.put("/devicetoken",check_auth,user_controller.recieveDeviceToken)
 
 module.exports = router;
 

@@ -38,9 +38,9 @@ exports.get_user_by_id = (req, res, next) => {
 
   
 exports.recieveDeviceToken = (req,res,next)=>{
-
+console.log("reached")
   const userId   = req.user_data._id
-  const d_token = req.params.d_token;
+  const d_token = req.query.d_token;
 
   User.findOneAndUpdate({_id: userId},{$set : {d_token : d_token}})
   .exec()
