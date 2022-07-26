@@ -70,7 +70,7 @@ exports.signup = (req, res, next) => {
             console.log(`new Created user : ${user}`);
               res.status(201)
               .json(
-                getAuthResponse(username, password, user._id, avatar, gender)
+                getAuthResponse(username,  user._id, avatar, gender)
               );
           })
           .catch((err) => next(err));
@@ -99,36 +99,42 @@ exports.login = (req, res, next) => {
               .json(
                 getAuthResponse(
                   username,
-                  password,
                   users._id,
                   users.avatar,
                   users.gender
                 )
-              );
+              ); 
+          }else{
+            next(
+              ApiError.unauthorizedResponse(
+                "Incorrect username or password"
+              )
+            )
           }
-            if(error)
+            if(error){
             console.log(error);
             next(
               ApiError.unauthorizedResponse(
                 "Incorrect username or password"
               )
-            );
+            );}
           
         });
       }
-    })
+    }
+    )
     .catch((error) => next(error));
 };
 
 
 
-function getAuthResponse(username, password, user_id, avatar, gender) {
+function getAuthResponse(username,user_id, avatar, gender) {
   const token = jwt.sign(
     {
       _id: user_id,
       username: username,
-      password: password,
       gender: gender,
+      avatar : avatar
     },
     process.env.JWT_KEY,
   );
@@ -175,6 +181,41 @@ try{
     next(ApiError.unprocessableEntity(err.message||"Something went wrong!!"))
   }
   
+}
+
+exports.updateAvatar =(req,res,next)=>{
+  const new_avatar = req.body.new_avatar;
+  const logged_user_id = req.user_data._id;
+  if(new_avatar.lenght >0) next(ApiError.badRequest("Required parameter is missing!!"))
+  User.findOneAndUpdate({_id:logged_user_id}, {$set : {avatar : new_avatar}}, {new :true }).then((result)=>{
+    if(result) res.status(200).json(getAuthResponse(result.username,result._id, result.avatar, result.gender))
+  }).catch((err)=>next(err))
+}
+
+exports.changePassword = (req,res,next)=>{
+   const new_password = req.body.new_password;
+   const old_password = req.body.old_password; //incase if  token 
+   const logged_user_id = req.user_data._id;
+
+   User.findOne({_id : logged_user_id} ).exec()
+   .then((user)=>{
+   if(user){
+   bcrypt.compare(old_password,user.password).then((isPasswordMatched)=>{
+    if(isPasswordMatched){
+      bcrypt.hash(new_password, 10, (err, hash) => {
+        if (err)  next(err);
+        
+        User.findOneAndUpdate({_id:logged_user_id},{$set:{password : hash}}).then((result)=>{
+          res.status(200).json({satus : "Success",msg:"Password Changed!!"})
+        }).catch((err)=>next(err))
+      });
+    } else next(ApiError.badRequest("Old password is incorrect!!"))
+   }).catch((err)=>next(err))
+   }else{
+    next(ApiError.resourceNotFound("user not found!!"))
+   }
+   }).catch((err)=>next(err))
+   
 }
  
 

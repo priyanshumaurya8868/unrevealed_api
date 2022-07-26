@@ -13,7 +13,9 @@ router.post("/login",authController.login);
 
 router.delete("/deleteAccount",check_auth,authController.deactivateAccount)
 
+router.put("/changePassword", check_auth,authController.changePassword)
 
+router.put("/updateAvatar",check_auth,authController.updateAvatar)
 module.exports = router;
 
 

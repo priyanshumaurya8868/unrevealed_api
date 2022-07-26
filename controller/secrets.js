@@ -139,7 +139,7 @@ exports.get_my_secrets = (req, res, next) => {
 exports.update_secret = (req, res, next) => {
   const secret_id = req.body.secret_id;
   const updated_content = req.body.content;
-  const updated_tag = req.body.tag;
+  const updated_tag = req.body.tag.toLowerCase();
   const logged_user_id = req.user_data._id;
   if(stringExtentions.isBlank(updated_content)){
     next(ApiError.unprocessableEntity("Blank or invalid content!!"))
@@ -267,7 +267,7 @@ async function feedsSecret(secret) {
   } else {
     content_str = secret.content;
   }
-  return {
+ const obj = {
     _id: secret._id,
     author: {
       username: secret.author.username,
@@ -281,6 +281,8 @@ async function feedsSecret(secret) {
     views_count: secret.views_count,
     comments_count: await Comment.countDocuments({ secret_id: secret._id,is_reply : false }),
   };
+  console.log(obj)
+  return obj;
 }
 
 async function detailedSecret(secret) {
