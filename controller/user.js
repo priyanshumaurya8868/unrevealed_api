@@ -1,9 +1,5 @@
-const mongoose = require("mongoose");
 const ApiError = require("../error/ApiError");
-const User = require("../models/user");
-const bcrypt = require("bcrypt");
-const jwt = require("jsonwebtoken");
-const check_auth = require("../middleware/check-auth");
+const User = require("../models/user")
 
 
 exports.get_user= (req,res,next)=>{
@@ -19,6 +15,21 @@ User.findById(user_id).select(["username", "_id","gender","secrets","avatar", "d
 }
 )
 .catch((err) => next(err));
+}
+
+
+exports.get_users = (req,res, next)=>{
+   const search = req.query.search;
+   const reqexp = new RegExp(search,'i')
+   
+    User.find({usename : reqexp},{'username' : 1})
+    .select(["username", "_id","gender","secrets","avatar"])
+    .exec()
+    .then(users =>{
+      res.status(200).json(users)
+    })
+    .catch(err=>next(err))
+
 }
 
 exports.get_user_by_id = (req, res, next) => {

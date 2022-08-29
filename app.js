@@ -12,7 +12,7 @@ const avatarsRoute = require("./routes/avatars")
 const usersRoute = require("./routes/users")
 const commentsRoute= require("./routes/comments")
 
-mongoose.connect(process.env.mongodb_URL)
+
 
 app.use(morgan("dev")); //logging
 app.use(express.urlencoded({ extended: true })); //for encoding params
