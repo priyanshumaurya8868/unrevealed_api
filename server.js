@@ -1,9 +1,11 @@
 const http = require("http");
 const port = process.env.PORT || 2022;
 const app = require("./app");
-const mongoose = require('mongoose')
+const mongoose = require('mongoose');
+const { markAsUntransferable } = require("worker_threads");
 const server = http.createServer(app);
-
+const Message = require('./models/message')
+const Conversation = require('./models/conversation')
 mongoose
   .connect(process.env.mongodb_URL)
   .then(() => {
@@ -15,7 +17,10 @@ mongoose
    
   let onlineUsers = [];
 
-  
+  const getUser = (userId) => {
+    return onlineUsers.find((user) => user.userId === userId);
+  };
+
   const addUser = (userId, socketId) => {
     !onlineUsers.some((user) => user.userId === userId) &&
       onlineUsers.push({ userId, socketId });
@@ -36,13 +41,21 @@ mongoose
     });
 
      //send and get message
-  socket.on("sendMessage", ({ senderId, receiverId, text }) => {
+  socket.on("sendMessage",async({ senderId, receiverId, text, conversationId }) => {
     const user = getUser(receiverId);
     
     io.to(user.socketId).emit("getMessage", {
       senderId,
       text,
     });
+
+    const msg = new Message({
+      senderId : senderId,
+      conversationId : conversationId,
+      text : text
+    })
+
+    await msg.save()
   });
   
     //when disconnect

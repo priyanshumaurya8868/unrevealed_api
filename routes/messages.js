@@ -5,6 +5,12 @@ const Conversation = require('../models/conversation')
 const checAuth  = require('../middleware/check-auth')
 
 
+// {
+//   "senderId" :  "",
+//   "conversationId" : "",
+//   "text" : ""
+// }
+
 //send msg
 router.post("/",checAuth, async (req, res) => {
     const newMessage = new Message(req.body);
